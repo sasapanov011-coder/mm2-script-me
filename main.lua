@@ -1,71 +1,112 @@
---[[ 
-    Sasha Delta Hub
-    Free | No Key | Open Source
-]]
-
-if game.CoreGui:FindFirstChild("SashaDeltaHub") then
-    game.CoreGui.SashaDeltaHub:Destroy()
-end
+--==================================================
+--  Sasha Hub | Delta Executor
+--  MM2 / SCP / Universal
+--  No Key | Free | Open Source
+--==================================================
 
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
 
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local LP = Players.LocalPlayer
+local Char = LP.Character or LP.CharacterAdded:Wait()
+local HRP = Char:WaitForChild("HumanoidRootPart")
+local Cam = workspace.CurrentCamera
 
--- UI (Mini Orion-like)
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "SashaDeltaHub"
+-- Cleanup
+if game.CoreGui:FindFirstChild("SashaHub") then
+    game.CoreGui.SashaHub:Destroy()
+end
 
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.fromScale(0.32,0.45)
-Frame.Position = UDim2.fromScale(0.34,0.27)
-Frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-Frame.Active = true
-Frame.Draggable = true
+--==================================================
+-- UI
+--==================================================
+local Gui = Instance.new("ScreenGui", game.CoreGui)
+Gui.Name = "SashaHub"
 
-local UIList = Instance.new("UIListLayout", Frame)
-UIList.Padding = UDim.new(0,6)
+local Main = Instance.new("Frame", Gui)
+Main.Size = UDim2.fromScale(0.35,0.5)
+Main.Position = UDim2.fromScale(0.325,0.25)
+Main.BackgroundColor3 = Color3.fromRGB(18,18,18)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+Main.BackgroundTransparency = 1
 
-local function Button(text, callback)
-    local b = Instance.new("TextButton", Frame)
-    b.Size = UDim2.fromScale(1,0.08)
-    b.Text = text
-    b.BackgroundColor3 = Color3.fromRGB(35,35,35)
+TweenService:Create(Main,TweenInfo.new(0.4),{BackgroundTransparency=0}):Play()
+
+local Corner = Instance.new("UICorner", Main)
+Corner.CornerRadius = UDim.new(0,18)
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.fromScale(1,0.1)
+Title.Text = "🔥 Sasha Hub | MM2 / SCP"
+Title.TextColor3 = Color3.fromRGB(0,255,150)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextScaled = true
+
+local List = Instance.new("UIListLayout", Main)
+List.Padding = UDim.new(0,8)
+
+--==================================================
+-- Button creator
+--==================================================
+local function Button(txt,callback)
+    local b = Instance.new("TextButton", Main)
+    b.Size = UDim2.fromScale(1,0.075)
+    b.Text = txt
+    b.Font = Enum.Font.Gotham
+    b.TextScaled = true
     b.TextColor3 = Color3.new(1,1,1)
+    b.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    b.BorderSizePixel = 0
+    Instance.new("UICorner", b)
+
+    b.MouseEnter:Connect(function()
+        TweenService:Create(b,TweenInfo.new(0.2),{BackgroundColor3=Color3.fromRGB(45,45,45)}):Play()
+    end)
+    b.MouseLeave:Connect(function()
+        TweenService:Create(b,TweenInfo.new(0.2),{BackgroundColor3=Color3.fromRGB(30,30,30)}):Play()
+    end)
+
     b.MouseButton1Click:Connect(callback)
 end
 
--- VARIABLES
-local Flying = false
+--==================================================
+-- STATES
+--==================================================
+local Fly = false
 local Noclip = false
 local AutoFarm = false
 local Spin = false
-local AimLock = false
+local Aim = false
 
--- FUNCTIONS
-
--- FLY
+--==================================================
+-- FLY + NOCLIP (НОРМАЛЬНЫЙ)
+--==================================================
 local BV, BG
 local function ToggleFly()
-    Flying = not Flying
-    if Flying then
-        BV = Instance.new("BodyVelocity", HumanoidRootPart)
-        BV.MaxForce = Vector3.new(9e9,9e9,9e9)
-        BV.Velocity = Vector3.zero
+    Fly = not Fly
+    if Fly then
+        BV = Instance.new("BodyVelocity",HRP)
+        BV.MaxForce = Vector3.new(1e9,1e9,1e9)
 
-        BG = Instance.new("BodyGyro", HumanoidRootPart)
-        BG.MaxTorque = Vector3.new(9e9,9e9,9e9)
+        BG = Instance.new("BodyGyro",HRP)
+        BG.MaxTorque = Vector3.new(1e9,1e9,1e9)
 
         RunService.RenderStepped:Connect(function()
-            if Flying then
-                local cam = workspace.CurrentCamera
-                BV.Velocity = cam.CFrame.LookVector * 60
-                BG.CFrame = cam.CFrame
+            if Fly then
+                local dir = Vector3.zero
+                if UIS:IsKeyDown(Enum.KeyCode.W) then dir += Cam.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= Cam.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= Cam.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then dir += Cam.CFrame.RightVector end
+                BV.Velocity = dir * 80
+                BG.CFrame = Cam.CFrame
             end
         end)
     else
@@ -74,10 +115,9 @@ local function ToggleFly()
     end
 end
 
--- NOCLIP
 RunService.Stepped:Connect(function()
-    if Noclip and Character then
-        for _,v in pairs(Character:GetDescendants()) do
+    if Noclip then
+        for _,v in pairs(Char:GetDescendants()) do
             if v:IsA("BasePart") then
                 v.CanCollide = false
             end
@@ -85,78 +125,70 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- AUTOFARM (Coins)
+--==================================================
+-- AUTOFARM (летаешь + собираешь)
+--==================================================
 task.spawn(function()
-    while task.wait(0.4) do
+    while task.wait(0.35) do
         if AutoFarm then
             for _,v in pairs(workspace:GetDescendants()) do
-                if v.Name:lower():find("coin") and v:IsA("BasePart") then
-                    HumanoidRootPart.CFrame = v.CFrame
-                    task.wait(0.1)
+                if v:IsA("BasePart") and v.Name:lower():find("coin") then
+                    HRP.CFrame = v.CFrame
+                    task.wait(0.08)
                 end
             end
         end
     end
 end)
 
--- SCP / MM2 HIGHLIGHT
-local function ApplyRoleColors()
-    for _,plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character then
-            local h = Instance.new("Highlight", plr.Character)
-            h.FillTransparency = 0.4
+--==================================================
+-- MM2 / SCP ESP
+--==================================================
+local function SCP()
+    for _,p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            if p.Character:FindFirstChild("Highlight") then
+                p.Character.Highlight:Destroy()
+            end
+            local h = Instance.new("Highlight",p.Character)
+            h.FillTransparency = 0.35
 
-            if plr.Backpack:FindFirstChild("Knife") then
-                h.FillColor = Color3.fromRGB(255,0,0) -- Killer
-            elseif plr.Backpack:FindFirstChild("Gun") then
-                h.FillColor = Color3.fromRGB(0,100,255) -- Sheriff
+            if p.Backpack:FindFirstChild("Knife") then
+                h.FillColor = Color3.fromRGB(255,0,0)
+            elseif p.Backpack:FindFirstChild("Gun") then
+                h.FillColor = Color3.fromRGB(0,120,255)
             else
-                h.FillColor = Color3.fromRGB(0,255,0) -- Innocent
+                h.FillColor = Color3.fromRGB(0,255,120)
             end
         end
     end
 end
 
--- SPIN
-task.spawn(function()
-    while task.wait() do
-        if Spin then
-            HumanoidRootPart.CFrame *= CFrame.Angles(0,math.rad(20),0)
+--==================================================
+-- TARGET ПО НИКУ (УЛЕТАЕТ)
+--==================================================
+local function TargetPlayer(name)
+    for _,p in pairs(Players:GetPlayers()) do
+        if p.Name:lower():find(name:lower()) and p.Character then
+            p.Character.HumanoidRootPart.Velocity = Vector3.new(0,500,0)
         end
     end
-end)
+end
 
--- AIM TARGET
-RunService.RenderStepped:Connect(function()
-    if AimLock then
-        local closest,dist
-        for _,plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") then
-                local mag = (plr.Character.Head.Position - HumanoidRootPart.Position).Magnitude
-                if not dist or mag < dist then
-                    dist = mag
-                    closest = plr
-                end
-            end
-        end
-        if closest then
-            workspace.CurrentCamera.CFrame = CFrame.new(
-                workspace.CurrentCamera.CFrame.Position,
-                closest.Character.Head.Position
-            )
-        end
-    end
-end)
-
--- BUTTONS
+--==================================================
+-- BUTTONS (их МНОГО, база под 50+)
+--==================================================
 Button("🚀 Fly", ToggleFly)
 Button("👻 Noclip", function() Noclip = not Noclip end)
 Button("🧠 AutoFarm Coins", function() AutoFarm = not AutoFarm end)
-Button("🟥🟦🟩 SCP / MM2 ESP", ApplyRoleColors)
+Button("🟥🟦🟩 SCP / MM2 ESP", SCP)
 Button("🌀 Spin", function() Spin = not Spin end)
-Button("🎯 Aim Target", function() AimLock = not AimLock end)
+Button("🎯 Target (по нику)", function()
+    TargetPlayer("player") -- меняешь ник в коде или дальше сделаем textbox
+end)
 Button("🔁 Rejoin", function()
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    TeleportService:Teleport(game.PlaceId,LP)
 end)
 
-print("Sasha Delta Hub Loaded")
+--==================================================
+print("🔥 Sasha Hub Loaded Successfully")
