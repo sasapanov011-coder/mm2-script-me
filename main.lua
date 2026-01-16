@@ -1,58 +1,69 @@
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Delta Hub: Winter Edition ❄️", "Lavender")
+--[[ 
+  DELTA HUB: WINTER EDITION ❄️ 
+  Функции: ESP (Роли), AutoFarm, Плавный UI
+]]
 
--- Стилизация под снежинки (тема)
-local MainTab = Window:NewTab("Main/Farm")
-local ESPSect = MainTab:NewSection("ESP & Visuals")
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source.lua"))()
 
--- Функция для подсветки ролей в MM2
-local function CreateESP(player, color, roleName)
-    if player.Character and not player.Character:FindFirstChild("Highlight") then
-        local Highlight = Instance.new("Highlight")
-        Highlight.Parent = player.Character
-        Highlight.FillColor = color
-        Highlight.FillTransparency = 0.5
-        Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+local Window = Library:CreateWindow({
+   Name = "Delta Winter ❄️ | MM2 Hub",
+   LoadingTitle = "Загрузка снежинок...",
+   LoadingSubtitle = "by Gemini AI",
+   ConfigurationSaving = { Enabled = false }
+})
+
+local Main = Window:CreateTab("Главная 🏠")
+
+-- Функция ESP (Подсветка)
+local function UpdateESP()
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            -- Удаляем старую подсветку, если есть
+            if v.Character:FindFirstChild("Highlight") then v.Character.Highlight:Destroy() end
+            
+            local Highlight = Instance.new("Highlight", v.Character)
+            Highlight.OutlineTransparency = 0
+            Highlight.FillTransparency = 0.5
+            
+            -- Проверка ролей
+            if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
+                Highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Убийца (Красный)
+            elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then
+                Highlight.FillColor = Color3.fromRGB(0, 0, 255) -- Шериф (Синий)
+            else
+                Highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Мирный (Зеленый)
+            end
+        end
     end
 end
 
-ESPSect:NewButton("Activate Roles ESP", "Подсветить Убийцу и Шерифа", function()
-    while task.wait(2) do
-        for _, v in pairs(game.Players:GetPlayers()) do
-            if v.Backpack:FindFirstChild("Knife") or (v.Character and v.Character:FindFirstChild("Knife")) then
-                CreateESP(v, Color3.fromRGB(255, 0, 0), "Murderer") -- Красный
-            elseif v.Backpack:FindFirstChild("Gun") or (v.Character and v.Character:FindFirstChild("Gun")) then
-                CreateESP(v, Color3.fromRGB(0, 0, 255), "Sheriff") -- Синий
-            end
-        end
-    end
-end)
+Main:CreateButton({
+   Name = "Включить ESP (Роли игроков)",
+   Callback = function()
+       UpdateESP()
+       game:GetService("RunService").RenderStepped:Connect(UpdateESP)
+   end,
+})
 
--- Секция Автофарма
-local FarmSect = MainTab:NewSection("Auto Farm")
+-- Автофарм (Телепорт по монетам)
+Main:CreateToggle({
+   Name = "Авто-фарм монет 💰",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.Farm = Value
+       while _G.Farm do
+           wait(0.1)
+           local Container = workspace:FindFirstChild("Normal") and workspace.Normal:FindFirstChild("CoinContainer")
+           if Container then
+               for _, coin in pairs(Container:GetChildren()) do
+                   if _G.Farm and coin:FindFirstChild("TouchInterest") then
+                       game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = coin.CFrame
+                       wait(0.3) -- Пауза для плавности и против кика
+                   end
+               end
+           end
+       end
+   end,
+})
 
-FarmSect:NewToggle("Auto Collect Coins", "Плавно перемещает по монетам", function(state)
-    getgenv().AutoFarm = state
-    spawn(function()
-        while getgenv().AutoFarm do
-            task.wait()
-            local coins = workspace:FindFirstChild("Normal") -- Для MM2
-            if coins then
-                for _, coin in pairs(coins:GetChildren()) do
-                    if coin:IsA("TouchTransmitter") or coin:FindFirstChild("CoinVisual") then
-                        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = coin.CFrame
-                        task.wait(0.1)
-                    end
-                end
-            end
-        end
-    end)
-end)
-
--- Настройки интерфейса
-local SettingsTab = Window:NewTab("Settings")
-local SettingsSect = SettingsTab:NewSection("UI Config")
-
-SettingsSect:NewKeybind("Toggle UI", "Нажми, чтобы скрыть", Enum.KeyCode.RightControl, function()
-	Library:ToggleUI()
-end)
+Main:CreateLabel("Если не работает — нажми кнопку ESP повторно")
